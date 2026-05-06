@@ -1,0 +1,7 @@
+data/firebase_key.json
+.env
+.streamlit/secrets.toml
+venv/
+__pycache__/
+*.pyc
+.DS_Store
