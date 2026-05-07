@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 import hmac
+from html import escape
 import secrets
 import streamlit as st
 from datetime import datetime, timedelta
@@ -55,6 +56,484 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 ADMIN_LOGIN_ID = get_secret("ADMIN_LOGIN_ID", os.getenv("ADMIN_LOGIN_ID", os.getenv("ADMIN_USERNAME", "admin")))
 ADMIN_PASSWORD = get_secret("ADMIN_PASSWORD", os.getenv("ADMIN_PASSWORD", "admin123"))
+
+# ---------------- Styling ----------------
+
+def apply_app_styles():
+    st.markdown(
+        """
+        <style>
+            :root {
+                --app-bg: #f6f8fb;
+                --panel: #ffffff;
+                --ink: #172033;
+                --muted: #5d6778;
+                --line: #e3e8f0;
+                --blue: #2563eb;
+                --green: #0f9f6e;
+                --amber: #d97706;
+                --rose: #e11d48;
+            }
+
+            .stApp {
+                background:
+                    linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(15, 159, 110, 0.08) 34%, rgba(217, 119, 6, 0.06) 68%, rgba(225, 29, 72, 0.05) 100%),
+                    linear-gradient(180deg, #f8fbff 0%, var(--app-bg) 42%, #ffffff 100%);
+                color: var(--ink);
+            }
+
+            .block-container {
+                padding-top: 1.7rem;
+                padding-bottom: 3rem;
+                max-width: 1180px;
+            }
+
+            [data-testid="stSidebar"] {
+                background: #111827;
+            }
+
+            [data-testid="stSidebar"] * {
+                color: #f8fafc;
+            }
+
+            h1, h2, h3 {
+                letter-spacing: 0;
+            }
+
+            div[data-testid="stMetric"] {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 1rem;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            }
+
+            div[data-testid="stMetricLabel"] p {
+                color: var(--muted);
+                font-weight: 700;
+            }
+
+            .app-hero {
+                border: 1px solid var(--line);
+                background:
+                    linear-gradient(135deg, rgba(17, 24, 39, 0.96) 0%, rgba(30, 64, 175, 0.92) 48%, rgba(15, 159, 110, 0.88) 100%);
+                border-radius: 8px;
+                padding: 1.65rem 1.65rem;
+                box-shadow: 0 22px 46px rgba(15, 23, 42, 0.18);
+                margin-bottom: 1.2rem;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .app-hero:after {
+                content: "";
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: 6px;
+                background: linear-gradient(90deg, #38bdf8 0%, #22c55e 38%, #f59e0b 68%, #fb7185 100%);
+            }
+
+            .app-kicker {
+                color: #bfdbfe;
+                font-size: 0.82rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                margin-bottom: 0.35rem;
+            }
+
+            .app-hero h1 {
+                margin: 0;
+                font-size: clamp(2rem, 4vw, 3.4rem);
+                line-height: 1.05;
+                color: #ffffff;
+            }
+
+            .app-hero p {
+                color: #dbeafe;
+                font-size: 1.03rem;
+                margin: 0.65rem 0 0;
+                max-width: 780px;
+            }
+
+            .hero-dashboard {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.65rem;
+                margin-top: 1.2rem;
+                max-width: 860px;
+            }
+
+            .hero-stat {
+                background: rgba(255, 255, 255, 0.12);
+                border: 1px solid rgba(255, 255, 255, 0.22);
+                border-radius: 8px;
+                padding: 0.72rem;
+            }
+
+            .hero-stat b {
+                display: block;
+                color: #ffffff;
+                font-size: 1.15rem;
+            }
+
+            .hero-stat span {
+                color: #dbeafe;
+                font-size: 0.8rem;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 0.85rem;
+                margin: 0.75rem 0 1.1rem;
+            }
+
+            .info-card {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 1rem;
+                min-height: 142px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .info-card:before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 5px;
+                background: var(--accent, var(--blue));
+            }
+
+            .info-card.blue { --accent: #2563eb; }
+            .info-card.green { --accent: #0f9f6e; }
+            .info-card.amber { --accent: #d97706; }
+            .info-card.rose { --accent: #e11d48; }
+
+            .info-card strong {
+                display: block;
+                color: var(--ink);
+                font-size: 1rem;
+                margin-bottom: 0.35rem;
+            }
+
+            .info-card span {
+                color: var(--muted);
+                font-size: 0.93rem;
+            }
+
+            .note-strip {
+                background: #fffaf0;
+                border: 1px solid #fde7bd;
+                border-radius: 8px;
+                color: #6f4d10;
+                padding: 0.85rem 1rem;
+                margin: 0.5rem 0 1rem;
+            }
+
+            .section-band {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 1rem;
+                margin-bottom: 1rem;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            }
+
+            .section-band h3 {
+                margin-top: 0;
+            }
+
+            .section-band p {
+                color: var(--muted);
+                margin-bottom: 0;
+            }
+
+            .dashboard-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.8rem;
+                margin: 0.75rem 0 1rem;
+            }
+
+            .dashboard-tile {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 0.95rem;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+                border-top: 5px solid var(--accent, var(--blue));
+            }
+
+            .dashboard-tile b {
+                display: block;
+                font-size: 1.55rem;
+                line-height: 1;
+                color: var(--ink);
+            }
+
+            .dashboard-tile span {
+                color: var(--muted);
+                font-size: 0.88rem;
+                font-weight: 700;
+            }
+
+            .workflow-strip {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.65rem;
+                margin-bottom: 1rem;
+            }
+
+            .workflow-step {
+                background: #ffffff;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 0.8rem;
+            }
+
+            .workflow-step b {
+                color: var(--ink);
+                display: block;
+                margin-bottom: 0.18rem;
+            }
+
+            .workflow-step span {
+                color: var(--muted);
+                font-size: 0.86rem;
+            }
+
+            .coach-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 0.8rem;
+                margin: 0.75rem 0 1rem;
+            }
+
+            .coach-card {
+                background: #ffffff;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 0.95rem;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+                border-left: 5px solid var(--accent, var(--blue));
+            }
+
+            .coach-card b {
+                display: block;
+                color: var(--ink);
+                margin-bottom: 0.25rem;
+            }
+
+            .coach-card span {
+                color: var(--muted);
+                font-size: 0.9rem;
+            }
+
+            .pill-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-top: 0.8rem;
+            }
+
+            .pill {
+                background: #eef2ff;
+                color: #243b7a;
+                border: 1px solid #d8e0ff;
+                border-radius: 999px;
+                font-size: 0.84rem;
+                font-weight: 700;
+                padding: 0.32rem 0.65rem;
+            }
+
+            div[data-baseweb="tab-list"] {
+                gap: 0.35rem;
+            }
+
+            button[data-baseweb="tab"] {
+                background: #ffffff;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 0.45rem 0.8rem;
+            }
+
+            .stButton > button,
+            .stFormSubmitButton > button {
+                border-radius: 8px;
+                border: 1px solid #1d4ed8;
+                background: #2563eb;
+                color: #ffffff;
+                font-weight: 800;
+            }
+
+            .stButton > button:hover,
+            .stFormSubmitButton > button:hover {
+                border-color: #1e40af;
+                background: #1d4ed8;
+                color: #ffffff;
+            }
+
+            @media (max-width: 780px) {
+                .info-grid,
+                .hero-dashboard,
+                .dashboard-grid,
+                .workflow-strip,
+                .coach-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .app-hero {
+                    padding: 1rem;
+                }
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def show_app_header():
+    st.markdown(
+        """
+        <div class="app-hero">
+            <div class="app-kicker">AI-powered study workspace</div>
+            <h1>AI Cloud Study Saver</h1>
+            <p>Turn class notes into focused flashcards, save every study session in the cloud, and track which topics are strong, weak, or ready for review.</p>
+            <div class="pill-row">
+                <span class="pill">PDF and TXT notes</span>
+                <span class="pill">AI flashcards</span>
+                <span class="pill">Cloud history</span>
+                <span class="pill">Progress reports</span>
+            </div>
+            <div class="hero-dashboard">
+                <div class="hero-stat"><b>Upload</b><span>notes from class</span></div>
+                <div class="hero-stat"><b>Generate</b><span>AI flashcards</span></div>
+                <div class="hero-stat"><b>Rate</b><span>Strong, Review, Weak</span></div>
+                <div class="hero-stat"><b>Improve</b><span>with progress data</span></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def show_login_overview():
+    st.markdown(
+        """
+        <div class="info-grid">
+            <div class="info-card blue">
+                <strong>1. Add your study material</strong>
+                <span>Upload a PDF, upload a text file, or paste notes from class. Keep the content focused for better flashcards.</span>
+            </div>
+            <div class="info-card green">
+                <strong>2. Generate smart flashcards</strong>
+                <span>The app finds key terms and definitions, then creates cards you can rate as Strong, Review, or Weak.</span>
+            </div>
+            <div class="info-card amber">
+                <strong>3. Save and track growth</strong>
+                <span>Each saved session builds your progress report so you know what to study next instead of guessing.</span>
+            </div>
+        </div>
+        <div class="workflow-strip">
+            <div class="workflow-step"><b>Best for</b><span>lecture notes, exam review, chapter summaries, and quick revision.</span></div>
+            <div class="workflow-step"><b>Study smarter</b><span>Weak cards show where to spend your next 10 minutes.</span></div>
+            <div class="workflow-step"><b>Cloud saved</b><span>Your sessions stay connected to your login account.</span></div>
+            <div class="workflow-step"><b>Teacher view</b><span>Admins can see class progress and common weak areas.</span></div>
+        </div>
+        <div class="note-strip">
+            <strong>Important:</strong> Create a student account before saving sessions. Use the same login every time so your progress report stays connected.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def show_student_intro(user):
+    display_name = escape(str(user.get("display_name", "Student")))
+    st.markdown(
+        f"""
+        <div class="section-band">
+            <h3>Welcome back, {display_name}</h3>
+            <p>Start with one chapter, lecture, or topic. Generate flashcards, rate each card honestly, then save the session to update your progress report.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def show_admin_intro():
+    st.markdown(
+        """
+        <div class="section-band">
+            <h3>Admin Dashboard</h3>
+            <p>Monitor student accounts, saved study sessions, flashcard volume, and weak areas across the class.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_dashboard_tiles(tiles):
+    tile_html = []
+    for value, label, color in tiles:
+        tile_html.append(
+            f"""
+            <div class="dashboard-tile" style="--accent: {color};">
+                <b>{escape(str(value))}</b>
+                <span>{escape(str(label))}</span>
+            </div>
+            """
+        )
+
+    st.markdown(
+        f"""<div class="dashboard-grid">{''.join(tile_html)}</div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def show_student_snapshot(docs):
+    session_df, _ = build_progress_report(docs)
+
+    if session_df.empty:
+        render_dashboard_tiles([
+            ("0", "Saved sessions", "#2563eb"),
+            ("0", "Flashcards created", "#0f9f6e"),
+            ("0", "Words studied", "#d97706"),
+            ("Start", "Next step: add notes", "#e11d48"),
+        ])
+        return
+
+    total_sessions = len(session_df)
+    total_cards = int(session_df["Flashcards"].sum())
+    total_words = int(session_df["Words"].sum())
+    weak_cards = int(session_df["Weak"].sum())
+
+    render_dashboard_tiles([
+        (total_sessions, "Saved sessions", "#2563eb"),
+        (total_cards, "Flashcards created", "#0f9f6e"),
+        (total_words, "Words studied", "#d97706"),
+        (weak_cards, "Weak cards to review", "#e11d48"),
+    ])
+
+
+def show_admin_snapshot(user_rows, session_df):
+    total_sessions = len(session_df)
+    total_cards = int(session_df["Flashcards"].sum()) if not session_df.empty else 0
+    weak_cards = int(session_df["Weak"].sum()) if not session_df.empty else 0
+
+    render_dashboard_tiles([
+        (len(user_rows), "Registered users", "#2563eb"),
+        (total_sessions, "Study sessions", "#0f9f6e"),
+        (total_cards, "Flashcards saved", "#d97706"),
+        (weak_cards, "Weak cards flagged", "#e11d48"),
+    ])
 
 # ---------------- Functions ----------------
 
@@ -163,8 +642,36 @@ def extract_text_from_pdf(file):
     pdf_reader = PyPDF2.PdfReader(file)
     text = ""
     for page in pdf_reader.pages:
-        text += page.extract_text() + "\n"
-    return text
+        text += (page.extract_text() or "") + "\n"
+    return text.strip()
+
+
+def parse_flashcard_response(content):
+    content = str(content or "").strip()
+    if content.startswith("```"):
+        content = content.strip("`").strip()
+        if content.lower().startswith("json"):
+            content = content[4:].strip()
+
+    start = content.find("[")
+    end = content.rfind("]")
+    if start != -1 and end != -1:
+        content = content[start:end + 1]
+
+    cards = json.loads(content)
+    if not isinstance(cards, list):
+        return []
+
+    cleaned_cards = []
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        term = str(card.get("term", "")).strip()
+        definition = str(card.get("definition", "")).strip()
+        if term and definition:
+            cleaned_cards.append({"term": term, "definition": definition})
+
+    return cleaned_cards
 
 
 def generate_flashcards(text):
@@ -192,7 +699,7 @@ Notes:
             messages=[{"role": "user", "content": prompt}]
         )
 
-        return json.loads(response.choices[0].message.content)
+        return parse_flashcard_response(response.choices[0].message.content)
 
     except Exception as e:
         st.error(f"AI error: {e}")
@@ -202,10 +709,10 @@ Notes:
 def save_to_cloud(name, notes, flashcards):
     user = get_current_user() or {}
     db.collection("study_notes").add({
-        "user_id": user.get("login_id", normalize_login_id(name)),
-        "student_name": name,
+        "user_id": normalize_login_id(user.get("login_id", name)),
+        "student_name": str(name or "").strip(),
         "notes": notes,
-        "flashcards": flashcards,
+        "flashcards": flashcards or [],
         "mastery": st.session_state.get("mastery", {}),
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
@@ -326,6 +833,102 @@ def get_study_streak(session_df):
     return streak
 
 
+def get_mastery_breakdown(session_df):
+    if session_df.empty:
+        return pd.DataFrame(columns=["Status", "Cards", "Color"])
+
+    strong_cards = int(session_df["Strong"].sum())
+    review_cards = int(session_df["Review"].sum())
+    weak_cards = int(session_df["Weak"].sum())
+    total_cards = int(session_df["Flashcards"].sum())
+    rated_cards = strong_cards + review_cards + weak_cards
+    not_rated = max(total_cards - rated_cards, 0)
+
+    rows = [
+        {"Status": "Strong", "Cards": strong_cards, "Color": "#0f9f6e"},
+        {"Status": "Review", "Cards": review_cards, "Color": "#d97706"},
+        {"Status": "Weak", "Cards": weak_cards, "Color": "#e11d48"},
+        {"Status": "Not rated", "Cards": not_rated, "Color": "#64748b"},
+    ]
+    return pd.DataFrame([row for row in rows if row["Cards"] > 0])
+
+
+def show_mastery_pie_chart(session_df):
+    pie_df = get_mastery_breakdown(session_df)
+
+    if pie_df.empty:
+        st.info("Rate and save flashcards to unlock your mastery chart.")
+        return
+
+    st.vega_lite_chart(
+        pie_df,
+        {
+            "mark": {"type": "arc", "innerRadius": 70, "outerRadius": 125, "cornerRadius": 4},
+            "encoding": {
+                "theta": {"field": "Cards", "type": "quantitative"},
+                "color": {
+                    "field": "Status",
+                    "type": "nominal",
+                    "scale": {
+                        "domain": ["Strong", "Review", "Weak", "Not rated"],
+                        "range": ["#0f9f6e", "#d97706", "#e11d48", "#64748b"],
+                    },
+                    "legend": {"orient": "bottom", "title": None},
+                },
+                "tooltip": [
+                    {"field": "Status", "type": "nominal"},
+                    {"field": "Cards", "type": "quantitative"},
+                ],
+            },
+            "view": {"stroke": None},
+        },
+        use_container_width=True,
+    )
+
+
+def show_study_coach(session_df, area_df):
+    total_cards = int(session_df["Flashcards"].sum()) if not session_df.empty else 0
+    strong_cards = int(session_df["Strong"].sum()) if not session_df.empty else 0
+    weak_cards = int(session_df["Weak"].sum()) if not session_df.empty else 0
+    review_cards = int(session_df["Review"].sum()) if not session_df.empty else 0
+
+    mastery_percent = round((strong_cards / total_cards) * 100) if total_cards else 0
+    focus_area = "Rate more cards"
+    focus_detail = "After saving ratings, your weakest topic will appear here."
+
+    if not area_df.empty:
+        weakest = area_df.sort_values(by=["Score", "Cards"], ascending=[True, False]).iloc[0]
+        focus_area = str(weakest["Area"])
+        focus_detail = f"Current score: {int(weakest['Score'])}%. Review this first."
+
+    if weak_cards:
+        next_action = f"Review {weak_cards} weak card(s) before generating new ones."
+    elif review_cards:
+        next_action = f"Practice {review_cards} review card(s) until they feel strong."
+    else:
+        next_action = "Generate a fresh set of flashcards and rate them after studying."
+
+    st.markdown(
+        f"""
+        <div class="coach-grid">
+            <div class="coach-card" style="--accent: #0f9f6e;">
+                <b>{mastery_percent}% mastery</b>
+                <span>Percent of saved cards marked Strong.</span>
+            </div>
+            <div class="coach-card" style="--accent: #e11d48;">
+                <b>{escape(focus_area)}</b>
+                <span>{escape(focus_detail)}</span>
+            </div>
+            <div class="coach-card" style="--accent: #2563eb;">
+                <b>Next best move</b>
+                <span>{escape(next_action)}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def show_progress_report(docs):
     st.subheader("📈 Progress Report")
 
@@ -349,6 +952,8 @@ def show_progress_report(docs):
     metric_cols[3].metric("Strong Cards", strong_cards)
     metric_cols[4].metric("Study Streak", f"{streak} day" if streak == 1 else f"{streak} days")
 
+    show_study_coach(session_df, area_df)
+
     if weak_cards:
         st.warning(f"You marked {weak_cards} card(s) as weak. Start there for the fastest improvement.")
     elif strong_cards:
@@ -357,11 +962,19 @@ def show_progress_report(docs):
         st.info("Rate your flashcards after generating them to see strong and weak areas.")
 
     chart_df = session_df.dropna(subset=["Date"]).copy()
-    if not chart_df.empty:
-        chart_df["Study Date"] = chart_df["Date"].dt.date
-        daily_df = chart_df.groupby("Study Date", as_index=False)[["Flashcards", "Words"]].sum()
+    chart_col, pie_col = st.columns([1.25, 1])
+    with chart_col:
         st.write("Study activity")
-        st.line_chart(daily_df, x="Study Date", y=["Flashcards", "Words"])
+        if not chart_df.empty:
+            chart_df["Study Date"] = chart_df["Date"].dt.date
+            daily_df = chart_df.groupby("Study Date", as_index=False)[["Flashcards", "Words"]].sum()
+            st.line_chart(daily_df, x="Study Date", y=["Flashcards", "Words"])
+        else:
+            st.info("Save dated sessions to see study activity over time.")
+
+    with pie_col:
+        st.write("Mastery breakdown")
+        show_mastery_pie_chart(session_df)
 
     if not area_df.empty:
         strong_areas = area_df[area_df["Status"] == "Strong"].head(5)
@@ -393,17 +1006,18 @@ def show_progress_report(docs):
 
 # ---------------- UI ----------------
 
-st.title("☁️ AI Cloud Study Saver")
-
-st.write("Upload notes, generate AI flashcards, save them in cloud, and track what you are strong or weak in.")
+apply_app_styles()
+show_app_header()
 
 
 def show_login_screen():
-    st.subheader("Login")
+    show_login_overview()
+    st.subheader("Choose how to continue")
 
     login_tab, signup_tab, admin_tab = st.tabs(["Student Login", "Create Account", "Admin Login"])
 
     with login_tab:
+        st.caption("Use your student login to continue studying and see your saved progress.")
         with st.form("student_login_form"):
             login_id = st.text_input("Login ID", key="student_login_id")
             password = st.text_input("Password", type="password", key="student_login_password")
@@ -419,6 +1033,7 @@ def show_login_screen():
                 st.error("Invalid student login ID or password.")
 
     with signup_tab:
+        st.caption("New here? Create one student account, then use it every time you save notes.")
         with st.form("student_signup_form"):
             display_name = st.text_input("Student Name")
             login_id = st.text_input("Choose Login ID")
@@ -433,6 +1048,7 @@ def show_login_screen():
                 st.error(message)
 
     with admin_tab:
+        st.caption("Admin access is for reviewing student activity and class-wide weak areas.")
         with st.form("admin_login_form"):
             login_id = st.text_input("Admin Login ID")
             password = st.text_input("Admin Password", type="password")
@@ -480,9 +1096,25 @@ def show_student_app(user):
         logout_user()
         st.rerun()
 
+    if st.session_state.pop("save_success", False):
+        st.success("Saved to Firebase.")
+
+    show_student_intro(user)
+    student_docs = get_notes_for_user(user["login_id"])
+    show_student_snapshot(student_docs)
+
     tab_study, tab_progress, tab_saved = st.tabs(["Study", "Progress Report", "Saved Sessions"])
 
     with tab_study:
+        st.markdown(
+            """
+            <div class="section-band">
+                <h3>Create a study session</h3>
+                <p>Add notes, generate cards, then save after rating them. Short, topic-focused notes usually create the best flashcards.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         name = st.text_input("Student Name", value=user["display_name"])
         uploaded_file = st.file_uploader("Upload PDF or TXT", type=["pdf", "txt"])
         manual_notes = st.text_area("Or paste notes manually", height=200)
@@ -516,9 +1148,10 @@ def show_student_app(user):
 
         with col2:
             if st.button("Save to Cloud"):
-                if name and notes:
+                if name and notes.strip():
                     save_to_cloud(name, notes, st.session_state.get("flashcards", []))
-                    st.success("Saved to Firebase!")
+                    st.session_state["save_success"] = True
+                    st.rerun()
                 else:
                     st.warning("Enter name and notes.")
 
@@ -543,12 +1176,10 @@ def show_student_app(user):
                     )
 
     with tab_progress:
-        docs = get_notes_for_user(user["login_id"])
-        show_progress_report(docs)
+        show_progress_report(student_docs)
 
     with tab_saved:
-        docs = get_notes_for_user(user["login_id"])
-        show_saved_sessions(docs)
+        show_saved_sessions(student_docs)
 
 
 def show_admin_app(user):
@@ -557,7 +1188,7 @@ def show_admin_app(user):
         logout_user()
         st.rerun()
 
-    st.subheader("Admin Dashboard")
+    show_admin_intro()
 
     users = get_users()
     docs = get_notes()
@@ -573,12 +1204,7 @@ def show_admin_app(user):
         })
 
     session_df, area_df = build_progress_report(docs)
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Users", len(user_rows))
-    col2.metric("Study Sessions", len(session_df))
-    col3.metric("Flashcards", int(session_df["Flashcards"].sum()) if not session_df.empty else 0)
-    col4.metric("Weak Cards", int(session_df["Weak"].sum()) if not session_df.empty else 0)
+    show_admin_snapshot(user_rows, session_df)
 
     admin_tab_users, admin_tab_progress, admin_tab_sessions = st.tabs(["Users", "Progress", "Sessions"])
 
