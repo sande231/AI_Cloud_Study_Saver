@@ -19,7 +19,89 @@ import pandas as pd
 # ---------------- Setup ----------------
 load_dotenv()
 
-st.set_page_config(page_title="AI Cloud Study Saver", layout="wide")
+st.set_page_config(
+    page_title="AI Cloud Study Saver",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Register PWA (Progressive Web App)
+def setup_pwa():
+    # Inline service worker registration
+    st.markdown(
+        """
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="theme-color" content="#2563eb">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Study Saver">
+        <meta name="description" content="AI-powered flashcard app for students. Generate, study, and track progress.">
+        <link rel="manifest" href="/manifest.json">
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232563eb' width='192' height='192'/><text x='50%' y='50%' font-size='100' fill='white' text-anchor='middle' dominant-baseline='middle' font-weight='bold'>📚</text></svg>">
+        <script>
+            // Register Service Worker for offline support
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    // Create inline service worker
+                    const swCode = `
+const CACHE_NAME = 'ai-study-saver-v1';
+const urlsToCache = ['/', '/index.html'];
+
+self.addEventListener('install', event => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+    self.clients.claim();
+});
+
+self.addEventListener('fetch', event => {
+    if (event.request.method !== 'GET') return;
+    
+    event.respondWith(
+        fetch(event.request)
+            .then(response => {
+                const responseClone = response.clone();
+                try {
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, responseClone);
+                    });
+                } catch(e) {}
+                return response;
+            })
+            .catch(() => {
+                return caches.match(event.request)
+                    .then(response => response || new Response('Offline'));
+            })
+    );
+});
+`;
+                    
+                    const blob = new Blob([swCode], {type: 'application/javascript'});
+                    const swUrl = URL.createObjectURL(blob);
+                    
+                    navigator.serviceWorker.register(swUrl)
+                        .then(reg => console.log('✓ Service Worker registered'))
+                        .catch(err => console.log('Service Worker registration failed:', err));
+                });
+            }
+            
+            // Handle install prompt for Android
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                window.showInstallPrompt = true;
+            });
+            
+            // Show install button for Android/PWA-capable browsers
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                console.log('App is in standalone mode');
+            }
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
 
 def get_secret(name, default=None):
     try:
@@ -547,20 +629,21 @@ def show_student_snapshot(docs):
         render_dashboard_tiles([
             ("0", "Saved sessions", "#2563eb"),
             ("0", "Flashcards created", "#0f9f6e"),
-            ("0", "Words studied", "#d97706"),
-            ("Start", "Next step: add notes", "#e11d48"),
+            ("0 day", "Study streak", "#f59e0b"),
+            ("0", "Weak cards to review", "#e11d48"),
         ])
         return
 
     total_sessions = len(session_df)
     total_cards = int(session_df["Flashcards"].sum())
-    total_words = int(session_df["Words"].sum())
+    streak = get_study_streak(session_df)
     weak_cards = int(session_df["Weak"].sum())
 
+    streak_label = f"{streak} day" if streak == 1 else f"{streak} days"
     render_dashboard_tiles([
         (total_sessions, "Saved sessions", "#2563eb"),
         (total_cards, "Flashcards created", "#0f9f6e"),
-        (total_words, "Words studied", "#d97706"),
+        (streak_label, "Study streak", "#f59e0b"),
         (weak_cards, "Weak cards to review", "#e11d48"),
     ])
 
@@ -1048,6 +1131,7 @@ def show_progress_report(docs):
 
 # ---------------- UI ----------------
 
+setup_pwa()
 apply_app_styles()
 show_app_header()
 
@@ -1125,7 +1209,21 @@ def show_saved_sessions(docs):
         st.info("No saved sessions yet.")
         return
 
+    search_query = st.text_input("🔍 Search sessions by name or date", key="session_search").lower().strip()
+
+    filtered_docs = []
     for doc in docs:
+        item = doc.to_dict()
+        student_name = str(item.get("student_name", "")).lower()
+        created_at = str(item.get("created_at", "")).lower()
+        if search_query in student_name or search_query in created_at:
+            filtered_docs.append(doc)
+
+    if search_query and not filtered_docs:
+        st.warning(f"No sessions found matching '{search_query}'.")
+        return
+
+    for doc in filtered_docs:
         item = doc.to_dict()
         flashcards = item.get("flashcards", []) or []
         mastery = item.get("mastery", {}) or {}
@@ -1141,11 +1239,40 @@ def show_saved_sessions(docs):
                 st.write(f"- {card.get('term')}: {card.get('definition')} ({rating})")
 
 
+def show_pwa_install_prompt():
+    st.sidebar.markdown(
+        """
+        <div style="background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+            <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #0c4a6e;">📱 Install App</p>
+            <p style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #0c4a6e;">Get offline access and quick launch from your home screen.</p>
+            <button id="install-app-btn" style="display: none; width: 100%; background: #0284c7; color: white; border: none; border-radius: 6px; padding: 0.5rem; font-weight: bold; cursor: pointer;">Install Now</button>
+        </div>
+        <script>
+            const installBtn = document.getElementById('install-app-btn');
+            if (installBtn && window.deferredPrompt) {
+                installBtn.style.display = 'block';
+                installBtn.addEventListener('click', async () => {
+                    if (window.deferredPrompt) {
+                        window.deferredPrompt.prompt();
+                        const { outcome } = await window.deferredPrompt.userChoice;
+                        console.log(`User response to the install prompt: ${outcome}`);
+                        window.deferredPrompt = null;
+                    }
+                });
+            }
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 def show_student_app(user):
     st.sidebar.success(f"Logged in as {user['display_name']}")
     if st.sidebar.button("Logout"):
         logout_user()
         st.rerun()
+    
+    show_pwa_install_prompt()
 
     if st.session_state.pop("save_success", False):
         st.success("Saved to Firebase.")
@@ -1184,7 +1311,7 @@ def show_student_app(user):
         else:
             notes = manual_notes
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
             if st.button("Generate AI Flashcards"):
@@ -1198,6 +1325,17 @@ def show_student_app(user):
                     st.warning("Add notes first.")
 
         with col2:
+            if st.button("🔄 Regenerate", help="Create a new set of flashcards from the same notes"):
+                if notes.strip():
+                    with st.spinner("Regenerating flashcards..."):
+                        flashcards = generate_flashcards(notes)
+                        st.session_state["flashcards"] = flashcards
+                        st.session_state["mastery"] = {}
+                        st.success("New flashcards generated!")
+                else:
+                    st.warning("Add notes first.")
+
+        with col3:
             if st.button("Save to Cloud"):
                 if name and notes.strip():
                     save_to_cloud(name, notes, st.session_state.get("flashcards", []))
@@ -1210,21 +1348,34 @@ def show_student_app(user):
             st.subheader("🧠 Flashcards")
             st.caption("Rate each card before saving so the progress report can find your strong and weak areas.")
 
+            search_cards = st.text_input("🔍 Search flashcards", key="flashcard_search").lower().strip()
+
             mastery = st.session_state.setdefault("mastery", {})
 
+            filtered_indices = []
             for index, card in enumerate(st.session_state["flashcards"]):
-                with st.container(border=True):
-                    st.markdown(f"**{card.get('term')}**")
-                    st.write(card.get("definition"))
-                    mastery[str(index)] = st.radio(
-                        "How well do you know this?",
-                        ["Strong", "Review", "Weak"],
-                        horizontal=True,
-                        key=f"mastery_{index}",
-                        index=["Strong", "Review", "Weak"].index(mastery.get(str(index), "Review"))
-                        if mastery.get(str(index), "Review") in ["Strong", "Review", "Weak"]
-                        else 1,
-                    )
+                term = str(card.get("term", "")).lower()
+                definition = str(card.get("definition", "")).lower()
+                if search_cards in term or search_cards in definition:
+                    filtered_indices.append(index)
+
+            if search_cards and not filtered_indices:
+                st.warning(f"No flashcards match '{search_cards}'.")
+            else:
+                for index in filtered_indices:
+                    card = st.session_state["flashcards"][index]
+                    with st.container(border=True):
+                        st.markdown(f"**{card.get('term')}**")
+                        st.write(card.get("definition"))
+                        mastery[str(index)] = st.radio(
+                            "How well do you know this?",
+                            ["Strong", "Review", "Weak"],
+                            horizontal=True,
+                            key=f"mastery_{index}",
+                            index=["Strong", "Review", "Weak"].index(mastery.get(str(index), "Review"))
+                            if mastery.get(str(index), "Review") in ["Strong", "Review", "Weak"]
+                            else 1,
+                        )
 
     with tab_progress:
         show_progress_report(student_docs)
