@@ -24,6 +24,12 @@ https://ai-cloud-study-saver.onrender.com
 
 ## Build Setup
 
+Required local tools:
+
+- Full Xcode from the Mac App Store, not only Command Line Tools.
+- Node.js and npm.
+- CocoaPods.
+
 From the repository root:
 
 ```bash
@@ -39,6 +45,13 @@ Open the native projects:
 ```bash
 npm run ios
 npm run android
+```
+
+If Xcode was just installed, select it first:
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+sudo xcodebuild -license accept
 ```
 
 ## iOS App Store Steps
