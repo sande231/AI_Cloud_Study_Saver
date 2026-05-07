@@ -25,83 +25,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Register PWA (Progressive Web App)
-def setup_pwa():
-    # Inline service worker registration
-    st.markdown(
-        """
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <meta name="theme-color" content="#2563eb">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        <meta name="apple-mobile-web-app-title" content="Study Saver">
-        <meta name="description" content="AI-powered flashcard app for students. Generate, study, and track progress.">
-        <link rel="manifest" href="/manifest.json">
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232563eb' width='192' height='192'/><text x='50%' y='50%' font-size='100' fill='white' text-anchor='middle' dominant-baseline='middle' font-weight='bold'>📚</text></svg>">
-        <script>
-            // Register Service Worker for offline support
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    // Create inline service worker
-                    const swCode = `
-const CACHE_NAME = 'ai-study-saver-v1';
-const urlsToCache = ['/', '/index.html'];
-
-self.addEventListener('install', event => {
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', event => {
-    self.clients.claim();
-});
-
-self.addEventListener('fetch', event => {
-    if (event.request.method !== 'GET') return;
-    
-    event.respondWith(
-        fetch(event.request)
-            .then(response => {
-                const responseClone = response.clone();
-                try {
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, responseClone);
-                    });
-                } catch(e) {}
-                return response;
-            })
-            .catch(() => {
-                return caches.match(event.request)
-                    .then(response => response || new Response('Offline'));
-            })
-    );
-});
-`;
-                    
-                    const blob = new Blob([swCode], {type: 'application/javascript'});
-                    const swUrl = URL.createObjectURL(blob);
-                    
-                    navigator.serviceWorker.register(swUrl)
-                        .then(reg => console.log('✓ Service Worker registered'))
-                        .catch(err => console.log('Service Worker registration failed:', err));
-                });
-            }
-            
-            // Handle install prompt for Android
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                window.deferredPrompt = e;
-                window.showInstallPrompt = true;
-            });
-            
-            // Show install button for Android/PWA-capable browsers
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                console.log('App is in standalone mode');
-            }
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
 def get_secret(name, default=None):
     try:
         return st.secrets.get(name, default)
@@ -1135,7 +1058,6 @@ def show_progress_report(docs):
 
 # ---------------- UI ----------------
 
-setup_pwa()
 apply_app_styles()
 show_app_header()
 
@@ -1243,40 +1165,11 @@ def show_saved_sessions(docs):
                 st.write(f"- {card.get('term')}: {card.get('definition')} ({rating})")
 
 
-def show_pwa_install_prompt():
-    st.sidebar.markdown(
-        """
-        <div style="background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-            <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #0c4a6e;">📱 Install App</p>
-            <p style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #0c4a6e;">Get offline access and quick launch from your home screen.</p>
-            <button id="install-app-btn" style="display: none; width: 100%; background: #0284c7; color: white; border: none; border-radius: 6px; padding: 0.5rem; font-weight: bold; cursor: pointer;">Install Now</button>
-        </div>
-        <script>
-            const installBtn = document.getElementById('install-app-btn');
-            if (installBtn && window.deferredPrompt) {
-                installBtn.style.display = 'block';
-                installBtn.addEventListener('click', async () => {
-                    if (window.deferredPrompt) {
-                        window.deferredPrompt.prompt();
-                        const { outcome } = await window.deferredPrompt.userChoice;
-                        console.log(`User response to the install prompt: ${outcome}`);
-                        window.deferredPrompt = null;
-                    }
-                });
-            }
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
-
 def show_student_app(user):
     st.sidebar.success(f"Logged in as {user['display_name']}")
     if st.sidebar.button("Logout"):
         logout_user()
         st.rerun()
-    
-    show_pwa_install_prompt()
 
     if st.session_state.pop("save_success", False):
         st.success("Saved to Firebase.")
