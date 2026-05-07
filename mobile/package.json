@@ -1,0 +1,25 @@
+{
+  "name": "ai-cloud-study-saver-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native mobile wrapper for AI Cloud Study Saver.",
+  "scripts": {
+    "sync": "npx cap sync",
+    "ios": "npx cap open ios",
+    "android": "npx cap open android",
+    "add:ios": "npx cap add ios",
+    "add:android": "npx cap add android",
+    "build:web": "echo \"Using hosted Render app; no local web build required.\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

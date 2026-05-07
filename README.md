@@ -105,6 +105,22 @@ The app supports hosted secrets through Streamlit secrets, so you do not need to
 
 For Render, this repository includes `render.yaml`. Render will ask for the secret values for `ADMIN_PASSWORD`, `GROQ_API_KEY`, and `FIREBASE_KEY_JSON` during setup.
 
+## App Store Publishing
+
+This repo includes a Capacitor mobile wrapper in `mobile/` for packaging the public Render app for iOS and Android.
+
+See:
+
+```text
+APP_STORE.md
+```
+
+A starter privacy policy is included in:
+
+```text
+PRIVACY.md
+```
+
 ## Security Notes
 
 - Student passwords are stored as salted hashes.
