@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.aicloudstudysaver.app',
+  appId: 'com.sandeepshah.funstudy',
   appName: 'AI Cloud Study Saver',
   webDir: 'www',
   server: {

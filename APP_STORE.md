@@ -12,7 +12,7 @@ https://ai-cloud-study-saver.onrender.com
 
 - Packages the public Render app inside a native iOS/Android shell.
 - Keeps Firebase, Groq, and Streamlit secrets on Render.
-- Adds native app identity: `com.aicloudstudysaver.app`.
+- Adds native app identity: `com.sandeepshah.funstudy`.
 - Provides a starter app icon at `mobile/assets/app-icon.svg`.
 
 ## Required Accounts
@@ -58,7 +58,7 @@ sudo xcodebuild -license accept
 
 1. Open the iOS project from `npm run ios`.
 2. In Xcode, set your Apple Team under Signing & Capabilities.
-3. Confirm bundle identifier: `com.aicloudstudysaver.app`.
+3. Confirm bundle identifier: `com.sandeepshah.funstudy`.
 4. Set app version and build number.
 5. Add app icons generated from `mobile/assets/app-icon.svg`.
 6. Archive from Xcode.
@@ -68,7 +68,7 @@ sudo xcodebuild -license accept
 ## Google Play Steps
 
 1. Open Android Studio from `npm run android`.
-2. Confirm package name: `com.aicloudstudysaver.app`.
+2. Confirm package name: `com.sandeepshah.funstudy`.
 3. Generate a signed release bundle.
 4. Upload the `.aab` file to Google Play Console.
 5. Fill out store listing, data safety, screenshots, content rating, and submit for review.
