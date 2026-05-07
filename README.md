@@ -2,6 +2,14 @@
 
 AI Cloud Study Saver is a Streamlit web app for turning study notes into AI flashcards, saving study sessions in Firebase, and tracking student progress over time.
 
+## Public App
+
+Open the deployed app:
+
+```text
+https://ai-cloud-study-saver.onrender.com
+```
+
 ## Features
 
 - Student sign up and login
