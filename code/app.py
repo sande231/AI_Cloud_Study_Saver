@@ -87,10 +87,9 @@ self.addEventListener('fetch', event => {
             }
             
             // Handle install prompt for Android
-            let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
-                deferredPrompt = e;
+                window.deferredPrompt = e;
                 window.showInstallPrompt = true;
             });
             
@@ -756,7 +755,7 @@ def login_user(user):
 
 
 def logout_user():
-    for key in ["auth_user", "flashcards", "mastery"]:
+    for key in ["auth_user", "flashcards", "mastery", "save_success"]:
         st.session_state.pop(key, None)
 
 
@@ -833,12 +832,17 @@ Notes:
 
 def save_to_cloud(name, notes, flashcards):
     user = get_current_user() or {}
+    flashcards = flashcards or []
+    mastery = st.session_state.get("mastery", {})
     db.collection("study_notes").add({
         "user_id": normalize_login_id(user.get("login_id", name)),
         "student_name": str(name or "").strip(),
-        "notes": notes,
-        "flashcards": flashcards or [],
-        "mastery": st.session_state.get("mastery", {}),
+        "notes": str(notes or "").strip(),
+        "flashcards": flashcards,
+        "mastery": {
+            str(index): mastery.get(str(index), "Not rated")
+            for index in range(len(flashcards))
+        },
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
@@ -1223,7 +1227,7 @@ def show_saved_sessions(docs):
         st.warning(f"No sessions found matching '{search_query}'.")
         return
 
-    for doc in filtered_docs:
+    for doc in sorted(filtered_docs, key=lambda item: item.to_dict().get("created_at", ""), reverse=True):
         item = doc.to_dict()
         flashcards = item.get("flashcards", []) or []
         mastery = item.get("mastery", {}) or {}
