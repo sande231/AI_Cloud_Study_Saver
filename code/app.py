@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 import hmac
+import re
 from html import escape
 import secrets
 import streamlit as st
@@ -27,28 +28,69 @@ def get_secret(name, default=None):
         return default
 
 
+def normalize_firebase_key(firebase_key):
+    required_fields = ["type", "project_id", "private_key", "client_email"]
+    missing_fields = [field for field in required_fields if not firebase_key.get(field)]
+
+    if missing_fields:
+        raise ValueError(f"Firebase key is missing: {', '.join(missing_fields)}")
+
+    firebase_key["private_key"] = firebase_key.get("private_key", "").replace("\\n", "\n")
+    return firebase_key
+
+
+def parse_firebase_key_json(raw_value):
+    raw_value = str(raw_value or "").strip()
+
+    if not raw_value:
+        raise ValueError("FIREBASE_KEY_JSON is empty.")
+
+    if raw_value[0] in {"'", '"'} and raw_value[-1:] == raw_value[0]:
+        raw_value = raw_value[1:-1].strip()
+
+    try:
+        return json.loads(raw_value)
+    except json.JSONDecodeError:
+        pass
+
+    # Render users sometimes paste JSON where the private_key contains real
+    # line breaks instead of escaped \n sequences. Escape just that field.
+    escaped_value = re.sub(
+        r'("private_key"\s*:\s*")(.*?)(")',
+        lambda match: match.group(1) + match.group(2).replace("\n", "\\n") + match.group(3),
+        raw_value,
+        flags=re.DOTALL,
+    )
+    return json.loads(escaped_value)
+
+
 def get_firebase_credentials():
     firebase_key = get_secret("firebase_key")
     if firebase_key:
-        firebase_key = dict(firebase_key)
-        firebase_key["private_key"] = firebase_key.get("private_key", "").replace("\\n", "\n")
+        firebase_key = normalize_firebase_key(dict(firebase_key))
         return credentials.Certificate(firebase_key)
 
     firebase_key_json = os.getenv("FIREBASE_KEY_JSON")
     if firebase_key_json:
-        firebase_key = json.loads(firebase_key_json)
-        firebase_key["private_key"] = firebase_key.get("private_key", "").replace("\\n", "\n")
+        firebase_key = normalize_firebase_key(parse_firebase_key_json(firebase_key_json))
         return credentials.Certificate(firebase_key)
 
     return credentials.Certificate("data/firebase_key.json")
 
 
 # Firebase
-if not firebase_admin._apps:
-    cred = get_firebase_credentials()
-    firebase_admin.initialize_app(cred)
+try:
+    if not firebase_admin._apps:
+        cred = get_firebase_credentials()
+        firebase_admin.initialize_app(cred)
 
-db = firestore.client()
+    db = firestore.client()
+    FIREBASE_READY = True
+    FIREBASE_ERROR = ""
+except Exception as error:
+    db = None
+    FIREBASE_READY = False
+    FIREBASE_ERROR = str(error)
 
 # Groq
 GROQ_API_KEY = get_secret("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
@@ -1008,6 +1050,15 @@ def show_progress_report(docs):
 
 apply_app_styles()
 show_app_header()
+
+if not FIREBASE_READY:
+    st.error("Firebase is not configured correctly.")
+    st.info(
+        "On Render, set FIREBASE_KEY_JSON to the full Firebase service account JSON. "
+        "Locally, keep the JSON file at data/firebase_key.json."
+    )
+    st.caption(f"Configuration detail: {FIREBASE_ERROR}")
+    st.stop()
 
 
 def show_login_screen():
